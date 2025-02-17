@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const SHEET_ID = process.env.SHEET_ID;
+const SHEET_ID = process.env.SECRET_SHEET_ID;
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
 export async function GET() {
