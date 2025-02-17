@@ -54,7 +54,7 @@ export default function TalentList() {
           const rows: Row[] = json.table.rows;
 
           const formattedData: string[][] = rows.map((row) =>
-            row.c.map((cell) => (cell.v !== null ? String(cell.v) : ""))
+            row.c.map((cell) => (cell?.v !== null ? String(cell?.v) : ""))
           );
 
           const mapData = formattedData.map((row: string[], index) => {
