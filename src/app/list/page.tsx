@@ -5,9 +5,6 @@ import { useState, useEffect } from "react";
 import useTableUtils from "../hooks/useTableUtils";
 import { ColumnType } from "antd/es/table/interface";
 
-const SHEET_ID = "1SB3HlYK_LfvQDkPNiRHmfAoSasnEEsFjKCT3AuaIyZ0"; // Ganti dengan Spreadsheet ID
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
-
 interface Talent extends Record<string, unknown> {
   key: string;
   name: string;
@@ -23,13 +20,7 @@ interface Talent extends Record<string, unknown> {
   cvUrl: string;
   email: string;
 }
-interface Cell {
-  v: string | number | null;
-}
 
-interface Row {
-  c: Cell[];
-}
 export default function TalentList() {
   const [data, setData] = useState<Talent[]>([]);
   const [allData, setAllData] = useState<Talent[]>([]);
@@ -47,51 +38,11 @@ export default function TalentList() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      fetch(SHEET_URL)
-        .then((res) => res.text())
-        .then((text) => {
-          const json = JSON.parse(text.substring(47, text.length - 2));
-          const rows: Row[] = json.table.rows;
-
-          const formattedData: string[][] = rows.map((row) =>
-            row.c.map((cell) => (cell?.v !== null ? String(cell?.v) : ""))
-          );
-
-          const mapData = formattedData.map((row: string[], index) => {
-            const [
-              name,
-              jobTitle,
-              department,
-              location,
-              yoe,
-              educationDegree,
-              educationInstitution,
-              educationGraduationYear,
-              careerLevel,
-              status,
-              cvUrl,
-              email,
-            ] = row;
-
-            return {
-              key: (index + 1).toString(),
-              name,
-              jobTitle,
-              department,
-              location,
-              yoe: Number(yoe),
-              educationDegree,
-              educationInstitution,
-              educationGraduationYear: Number(educationGraduationYear),
-              careerLevel,
-              status,
-              cvUrl,
-              email,
-            };
-          });
-          setAllData(mapData);
-        })
-        .catch((error) => console.error("Error fetching data:", error));
+      const res = await fetch("/api/sheets");
+      const result = await res.json();
+      setAllData(result?.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
