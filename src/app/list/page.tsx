@@ -4,7 +4,9 @@ import { Table } from "antd";
 import { useState, useEffect } from "react";
 import useTableUtils from "../hooks/useTableUtils";
 import { ColumnType } from "antd/es/table/interface";
-import { faker } from "@faker-js/faker";
+
+const SHEET_ID = "1SB3HlYK_LfvQDkPNiRHmfAoSasnEEsFjKCT3AuaIyZ0"; // Ganti dengan Spreadsheet ID
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
 interface Talent extends Record<string, unknown> {
   key: string;
@@ -21,6 +23,13 @@ interface Talent extends Record<string, unknown> {
   cvUrl: string;
   email: string;
 }
+interface Cell {
+  v: string | number | null;
+}
+
+interface Row {
+  c: Cell[];
+}
 export default function TalentList() {
   const [data, setData] = useState<Talent[]>([]);
   const [allData, setAllData] = useState<Talent[]>([]);
@@ -35,70 +44,87 @@ export default function TalentList() {
     setCurrentPage,
   } = useTableUtils<Talent>();
 
-  // will replace with api call
-  const generateRandomData = () =>
-    Array.from({ length: 100 }, (_, index) => ({
-      key: (index + 1).toString(),
-      name: faker.person.fullName(),
-      jobTitle: faker.person.jobTitle(),
-      department: faker.commerce.department(),
-      location: faker.location.city(),
-      yoe: faker.number.int({ min: 1, max: 20 }),
-      educationDegree: faker.helpers.arrayElement([
-        "Bachelor",
-        "Master",
-        "PhD",
-      ]),
-      educationInstitution: faker.company.name(),
-      educationGraduationYear: faker.number.int({ min: 2000, max: 2024 }),
-      careerLevel: faker.helpers.arrayElement([
-        "Junior",
-        "Mid",
-        "Senior",
-        "Lead",
-      ]),
-      status: faker.helpers.arrayElement(["Paid", "Unpaid", "Pending"]),
-      cvUrl: faker.internet.url(),
-      email: faker.internet.email(),
-    }));
-
-  const fetchData = async (
-    searchStates: Record<string, string> = {},
-    page: number = currentPage,
-    size: number = pageSize
-  ) => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      let filteredData = allData;
-      Object.entries(searchStates).forEach(([column, value]) => {
-        if (value) {
-          filteredData = filteredData.filter((item) =>
-            String((item as Record<string, unknown>)[column])
-              .toLowerCase()
-              .includes(value.toLowerCase())
+      fetch(SHEET_URL)
+        .then((res) => res.text())
+        .then((text) => {
+          const json = JSON.parse(text.substring(47, text.length - 2));
+          const rows: Row[] = json.table.rows;
+
+          const formattedData: string[][] = rows.map((row) =>
+            row.c.map((cell) => (cell.v !== null ? String(cell.v) : ""))
           );
-        }
-      });
 
-      const start = (page - 1) * size;
-      const paginatedData = filteredData.slice(start, start + size);
+          const mapData = formattedData.map((row: string[], index) => {
+            const [
+              name,
+              jobTitle,
+              department,
+              location,
+              yoe,
+              educationDegree,
+              educationInstitution,
+              educationGraduationYear,
+              careerLevel,
+              status,
+              cvUrl,
+              email,
+            ] = row;
 
-      setData(paginatedData);
-      setTotal(filteredData.length);
+            return {
+              key: (index + 1).toString(),
+              name,
+              jobTitle,
+              department,
+              location,
+              yoe: Number(yoe),
+              educationDegree,
+              educationInstitution,
+              educationGraduationYear: Number(educationGraduationYear),
+              careerLevel,
+              status,
+              cvUrl,
+              email,
+            };
+          });
+          setAllData(mapData);
+        })
+        .catch((error) => console.error("Error fetching data:", error));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const initialData = generateRandomData();
-    setAllData(initialData);
-    fetchData({});
-  }, []);
+  const filterData = async (
+    searchStates: Record<string, string> = {},
+    page: number = currentPage,
+    size: number = pageSize
+  ) => {
+    let filteredData = allData;
+    Object.entries(searchStates).forEach(([column, value]) => {
+      if (value) {
+        filteredData = filteredData.filter((item) =>
+          String((item as Record<string, unknown>)[column])
+            .toLowerCase()
+            .includes(value.toLowerCase())
+        );
+      }
+    });
+
+    const start = (page - 1) * size;
+    const paginatedData = filteredData.slice(start, start + size);
+
+    setData(paginatedData);
+    setTotal(filteredData.length);
+  };
 
   useEffect(() => {
     if (allData.length > 0) {
-      fetchData({}, currentPage, pageSize);
+      filterData({}, currentPage, pageSize);
+    } else {
+      fetchData();
     }
   }, [currentPage, pageSize, allData]);
 
@@ -117,13 +143,13 @@ export default function TalentList() {
       title: "Job Title",
       dataIndex: "jobTitle",
       key: "jobTitle",
-      ...getColumnSearchProps("jobTitle", fetchData),
+      ...getColumnSearchProps("jobTitle", filterData),
     },
     {
       title: "Department",
       dataIndex: "department",
       key: "department",
-      ...getColumnSearchProps("department", fetchData),
+      ...getColumnSearchProps("department", filterData),
     },
     {
       title: "Location",
@@ -178,7 +204,7 @@ export default function TalentList() {
           onChange: (page, size) => {
             setCurrentPage(page);
             setPageSize(size);
-            fetchData({}, page, size);
+            filterData({}, page, size);
           },
           pageSizeOptions: [5, 10, 20, 50, 100],
         }}
