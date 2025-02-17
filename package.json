@@ -20,6 +20,7 @@
     "react-highlight-words": "^0.21.0"
   },
   "devDependencies": {
+    "@ant-design/nextjs-registry": "^1.0.2",
     "@eslint/eslintrc": "^3",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
